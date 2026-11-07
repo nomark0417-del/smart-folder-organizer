@@ -109,8 +109,8 @@ export function useCategories() {
             : cat.keywords,
           extensions: updates.extensions
             ? updates.extensions
-                .map(e => (e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : `.${e.trim().toLowerCase()}`))
-                .filter(Boolean)
+              .map(e => (e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : `.${e.trim().toLowerCase()}`))
+              .filter(Boolean)
             : cat.extensions,
         };
       })

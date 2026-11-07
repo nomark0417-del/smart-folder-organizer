@@ -121,11 +121,10 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           <button
             onClick={onExecute}
             disabled={!canExecute}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm transition active:scale-95 ${
-              canExecute
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm transition active:scale-95 ${canExecute
                 ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20 cursor-pointer'
                 : 'bg-slate-300 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none'
-            }`}
+              }`}
           >
             <Play className="h-3.5 w-3.5 fill-current" />
             정리 실행하기
