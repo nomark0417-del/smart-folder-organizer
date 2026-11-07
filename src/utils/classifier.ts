@@ -114,7 +114,7 @@ export function discoverSmartClusters(files: FileItem[]): { suggestedName: strin
 
   // 2개 이상 파일에서 공유되는 단어 찾기
   const sortedTokens = Object.entries(tokenCount)
-    .filter(([_, ids]) => ids.length >= 2)
+    .filter(entry => entry[1].length >= 2)
     .sort((a, b) => b[1].length - a[1].length);
 
   for (const [token, ids] of sortedTokens) {

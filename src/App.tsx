@@ -243,9 +243,12 @@ export function App() {
     if (!isDemoMode && !targetDirHandle && hasRealFiles && isSupported) {
       try {
         alert('분류된 파일들을 저장할 내 컴퓨터의 대상 폴더를 선택해 주세요.');
-        targetDirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-        setDirHandle(targetDirHandle);
-        setDirName(targetDirHandle.name);
+        const pickedHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+        if (pickedHandle) {
+          targetDirHandle = pickedHandle;
+          setDirHandle(pickedHandle);
+          setDirName((pickedHandle as any).name || '선택한 폴더');
+        }
       } catch (err: any) {
         if (err.name === 'AbortError') {
           // 사용자가 취소함

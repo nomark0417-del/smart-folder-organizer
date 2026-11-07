@@ -85,7 +85,7 @@ export function createFileItemsFromFiles(
   categories: Category[]
 ): FileItem[] {
   const items: FileItem[] = [];
-  const fileArray = Array.from(rawFiles);
+  const fileArray = Array.from(rawFiles) as File[];
 
   for (const file of fileArray) {
     const ext = file.name.includes('.') ? `.${file.name.split('.').pop()!.toLowerCase()}` : '';
