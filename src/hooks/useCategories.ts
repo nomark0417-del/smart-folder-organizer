@@ -52,8 +52,64 @@ export const DEFAULT_CATEGORIES: Category[] = [
 
 const STORAGE_KEY = 'smart-folder-organizer:categories:v2';
 
+function parseRulesPayload(rawPayload: string): Category[] | null {
+  try {
+    const jsonStr = decodeURIComponent(atob(rawPayload));
+    const parsed = JSON.parse(jsonStr);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.map((item: any, i: number) => ({
+        id: `cat-${Date.now()}-${i}`,
+        name: sanitizeFolderName(item.n || item.name) || '폴더',
+        description: '',
+        keywords: Array.isArray(item.k || item.keywords)
+          ? (item.k || item.keywords).map((k: any) => String(k).trim().toLowerCase()).filter(Boolean)
+          : [],
+        extensions: [],
+        color: item.c || item.color || '#3b82f6',
+      }));
+    }
+  } catch (e) {
+    console.warn('Failed to parse rules from URL payload', e);
+  }
+  return null;
+}
+
 export function useCategories() {
+  const [importedFromUrlCount, setImportedFromUrlCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hashMatch = window.location.hash.match(/rules=([^&]+)/);
+      const queryMatch = window.location.search.match(/[?&]rules=([^&]+)/);
+      const rawPayload = hashMatch ? hashMatch[1] : (queryMatch ? queryMatch[1] : null);
+      if (rawPayload) {
+        const urlCategories = parseRulesPayload(rawPayload);
+        if (urlCategories && urlCategories.length > 0) {
+          setImportedFromUrlCount(urlCategories.length);
+          try {
+            window.history.replaceState(null, '', window.location.pathname);
+          } catch {}
+        }
+      }
+    }
+  }, []);
+
   const [categories, setCategories] = useState<Category[]>(() => {
+    // 1. URL 해시 또는 쿼리에서 공유된 규칙 우선 확인
+    if (typeof window !== 'undefined') {
+      const hashMatch = window.location.hash.match(/rules=([^&]+)/);
+      const queryMatch = window.location.search.match(/[?&]rules=([^&]+)/);
+      const rawPayload = hashMatch ? hashMatch[1] : (queryMatch ? queryMatch[1] : null);
+
+      if (rawPayload) {
+        const urlCategories = parseRulesPayload(rawPayload);
+        if (urlCategories && urlCategories.length > 0) {
+          return urlCategories;
+        }
+      }
+    }
+
+    // 2. localStorage 확인
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -125,11 +181,82 @@ export function useCategories() {
     setCategories(DEFAULT_CATEGORIES);
   };
 
+  const exportCategories = () => {
+    try {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(categories, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `folder-rules-${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (e) {
+      console.error('Failed to export categories', e);
+      alert('규칙 내보내기에 실패했습니다.');
+    }
+  };
+
+  const importCategories = async (file: File): Promise<{ success: boolean; count?: number; error?: string }> => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const validCategories: Category[] = parsed
+          .filter((item: any) => item && typeof item.name === 'string' && item.name.trim())
+          .map((item: any) => ({
+            id: typeof item.id === 'string' ? item.id : `cat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name: sanitizeFolderName(item.name) || '폴더',
+            description: typeof item.description === 'string' ? item.description : '',
+            keywords: Array.isArray(item.keywords)
+              ? item.keywords.map((k: any) => String(k).trim().toLowerCase()).filter(Boolean)
+              : [],
+            extensions: [],
+            color: typeof item.color === 'string' ? item.color : '#3b82f6',
+          }));
+
+        if (validCategories.length === 0) {
+          throw new Error('유효한 폴더 규칙을 찾을 수 없습니다.');
+        }
+
+        setCategories(validCategories);
+        return { success: true, count: validCategories.length };
+      } else {
+        throw new Error('올바른 형식의 규칙 파일(JSON)이 아닙니다.');
+      }
+    } catch (e: any) {
+      console.error('Failed to import categories', e);
+      return { success: false, error: e?.message || '규칙 가져오기에 실패했습니다.' };
+    }
+  };
+
+  const copyShareLink = async (): Promise<boolean> => {
+    try {
+      const minimal = categories.map(c => ({
+        n: c.name,
+        k: c.keywords,
+        c: c.color,
+      }));
+      const jsonStr = JSON.stringify(minimal);
+      const base64 = btoa(encodeURIComponent(jsonStr));
+      const shareUrl = `${window.location.origin}${window.location.pathname}#rules=${base64}`;
+      await navigator.clipboard.writeText(shareUrl);
+      return true;
+    } catch (e) {
+      console.error('Failed to copy share link', e);
+      return false;
+    }
+  };
+
   return {
     categories,
     addCategory,
     updateCategory,
     deleteCategory,
     resetToDefaults,
+    exportCategories,
+    importCategories,
+    copyShareLink,
+    importedFromUrlCount,
+    dismissImportedBanner: () => setImportedFromUrlCount(null),
   };
 }

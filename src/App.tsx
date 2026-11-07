@@ -13,10 +13,21 @@ import {
 } from './utils/fileSystem';
 import { classifyFile, discoverSmartClusters } from './utils/classifier';
 import { generateDemoFiles } from './utils/demoData';
-import { AlertTriangle, Folder, LayoutGrid } from 'lucide-react';
+import { AlertTriangle, Folder, LayoutGrid, Sparkles, X } from 'lucide-react';
 
 export function App() {
-  const { categories, addCategory, updateCategory, deleteCategory, resetToDefaults } = useCategories();
+  const {
+    categories,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    resetToDefaults,
+    exportCategories,
+    importCategories,
+    copyShareLink,
+    importedFromUrlCount,
+    dismissImportedBanner,
+  } = useCategories();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -292,6 +303,25 @@ export function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-[#0b0f19] dark:text-slate-100">
+      {/* 공유 링크를 통해 접속했을 때의 자동 적용 알림 배너 */}
+      {importedFromUrlCount !== null && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 text-xs font-semibold flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 shrink-0 text-amber-300" />
+            <span>
+              🎉 공유 링크를 통해 <strong>{importedFromUrlCount}개의 업무 폴더 규칙</strong>이 자동으로 적용되었습니다! (이 브라우저에 안전하게 저장됨)
+            </span>
+          </div>
+          <button
+            onClick={dismissImportedBanner}
+            className="p-1 hover:bg-white/20 rounded cursor-pointer transition"
+            title="닫기"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* 브라우저 미지원 경고 */}
       {!isSupported && (
         <div className="bg-amber-500 text-slate-950 px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2">
@@ -368,6 +398,9 @@ export function App() {
             onUpdateCategory={updateCategory}
             onDeleteCategory={deleteCategory}
             onResetToDefaults={resetToDefaults}
+            onExportRules={exportCategories}
+            onImportRules={importCategories}
+            onCopyShareLink={copyShareLink}
           />
         </aside>
 

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Edit2, Trash2, Check, X, Folder, RotateCcw } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Edit2, Trash2, Check, X, Folder, RotateCcw, Download, Upload, Link, CheckCheck } from 'lucide-react';
 import type { Category } from '../types';
 
 const PRESET_COLORS = [
@@ -19,6 +19,9 @@ interface CategoryManagerProps {
   onUpdateCategory: (id: string, updates: Partial<Omit<Category, 'id'>>) => void;
   onDeleteCategory: (id: string) => void;
   onResetToDefaults: () => void;
+  onExportRules?: () => void;
+  onImportRules?: (file: File) => Promise<{ success: boolean; count?: number; error?: string }>;
+  onCopyShareLink?: () => Promise<boolean>;
 }
 
 export const CategoryManager: React.FC<CategoryManagerProps> = ({
@@ -28,7 +31,12 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   onUpdateCategory,
   onDeleteCategory,
   onResetToDefaults,
+  onExportRules,
+  onImportRules,
+  onCopyShareLink,
 }) => {
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newKeywords, setNewKeywords] = useState('');
@@ -69,6 +77,31 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     setNewKeywords('');
     setNewColor(PRESET_COLORS[(categories.length + 1) % PRESET_COLORS.length]);
     setIsAdding(false);
+  };
+
+  const handleCopyLink = async () => {
+    if (onCopyShareLink) {
+      const ok = await onCopyShareLink();
+      if (ok) {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+      } else {
+        alert('링크 복사에 실패했습니다.');
+      }
+    }
+  };
+
+  const handleJsonFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onImportRules) {
+      const res = await onImportRules(file);
+      if (res.success) {
+        alert(`${res.count}개의 업무 폴더 규칙을 성공적으로 불러왔습니다!`);
+      } else {
+        alert(res.error || '규칙을 불러오지 못했습니다.');
+      }
+    }
+    if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
   };
 
   return (
@@ -282,14 +315,70 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
         })}
       </div>
 
-      {/* 하단 기본값 복원 버튼 */}
-      <div className="border-t border-slate-100 p-3 text-center dark:border-slate-800">
+      {/* 하단 동기화 및 백업 유틸리티 */}
+      <div className="border-t border-slate-100 p-3 space-y-2 dark:border-slate-800">
+        <input
+          type="file"
+          ref={jsonFileInputRef}
+          accept=".json"
+          onChange={handleJsonFileChange}
+          className="hidden"
+        />
+
+        {/* 1클릭 URL 동기화 링크 복사 (가장 추천하는 방법) */}
         <button
-          onClick={onResetToDefaults}
-          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer transition"
+          type="button"
+          onClick={handleCopyLink}
+          className={`w-full flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 text-xs font-semibold shadow-2xs transition active:scale-95 cursor-pointer ${
+            copiedLink
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-95'
+          }`}
+          title="이 링크를 다른 PC에서 열기만 하면 내 폴더 규칙이 1초 만에 그대로 적용됩니다"
         >
-          <RotateCcw className="h-3 w-3" /> 기본 업무 폴더 프리셋으로 복원
+          {copiedLink ? (
+            <>
+              <CheckCheck className="h-4 w-4" />
+              <span>링크 복사 완료! (다른 PC에서 열면 즉시 적용)</span>
+            </>
+          ) : (
+            <>
+              <Link className="h-3.5 w-3.5" />
+              <span>내 규칙 공유 링크 복사 (다른 PC용)</span>
+            </>
+          )}
         </button>
+
+        {/* 보조: 파일 백업/복원 및 기본값 복원 */}
+        <div className="flex items-center justify-between gap-1 text-[11px] pt-0.5">
+          <button
+            type="button"
+            onClick={onExportRules}
+            className="flex-1 inline-flex items-center justify-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-1 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition text-[10px]"
+            title="현재 폴더 규칙들을 JSON 파일로 내보냅니다"
+          >
+            <Download className="h-2.5 w-2.5 text-blue-500" />
+            <span>파일 백업</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => jsonFileInputRef.current?.click()}
+            className="flex-1 inline-flex items-center justify-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-1 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer transition text-[10px]"
+            title="저장해둔 규칙 JSON 파일을 불러옵니다"
+          >
+            <Upload className="h-2.5 w-2.5 text-indigo-500" />
+            <span>파일 복원</span>
+          </button>
+          <button
+            type="button"
+            onClick={onResetToDefaults}
+            className="flex-1 inline-flex items-center justify-center gap-1 rounded border border-transparent px-1.5 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer transition text-[10px]"
+            title="처음 기본 업무 폴더 프리셋으로 되돌립니다"
+          >
+            <RotateCcw className="h-2.5 w-2.5" />
+            <span>기본 복원</span>
+          </button>
+        </div>
       </div>
     </div>
   );
