@@ -13,6 +13,7 @@ import {
   FolderPlus,
   Filter,
   ChevronsUpDown,
+  FileUp,
 } from 'lucide-react';
 import type { FileItem, Category } from '../types';
 import { formatBytes, formatDate } from '../utils/format';
@@ -24,7 +25,9 @@ interface FileBoardProps {
   onReassignFile: (fileId: string, newCategoryId: string) => void;
   onApplyCluster: (suggestedName: string, fileIds: string[]) => void;
   onSelectDirectory: () => void;
+  onSelectFiles: () => void;
   onLoadDemo: () => void;
+  onDropFiles?: (files: FileList) => void;
 }
 
 type ViewFilter = 'non-empty' | 'all' | 'uncategorized';
@@ -56,44 +59,86 @@ export const FileBoard: React.FC<FileBoardProps> = ({
   onReassignFile,
   onApplyCluster,
   onSelectDirectory,
+  onSelectFiles,
   onLoadDemo,
+  onDropFiles,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('non-empty');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const toggleGroup = (id: string) => {
     setCollapsedGroups(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      if (onDropFiles) {
+        onDropFiles(e.dataTransfer.files);
+      }
+    }
+  };
+
   if (files.length === 0) {
     return (
-      <div className="flex h-full min-h-[480px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 p-8 text-center dark:border-slate-800 dark:bg-slate-900/50">
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`flex h-full min-h-[480px] flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center transition-all ${
+          isDragOver
+            ? 'border-blue-500 bg-blue-50/70 scale-[0.99] dark:bg-blue-950/40'
+            : 'border-slate-300 bg-white/70 dark:border-slate-800 dark:bg-slate-900/50'
+        }`}
+      >
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-50 to-indigo-50 text-blue-600 dark:from-blue-950/60 dark:to-indigo-950/60 dark:text-blue-400 mb-4 shadow-xs border border-blue-100 dark:border-blue-900/50">
           <FolderPlus className="h-8 w-8" />
         </div>
         <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1.5">
-          정리할 폴더를 선택해 주세요
+          {isDragOver ? '파일을 여기에 놓아주세요!' : '정리할 폴더나 개별 파일을 선택해 주세요'}
         </h3>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
-          다운로드 폴더나 바탕화면을 선택하면 파일이 외부로 전송되지 않고
-          <br className="hidden sm:inline" /> 내 업무 폴더 규칙과 파일명 연관성에 따라 즉시 자동 분류됩니다.
+          폴더를 통째로 선택하거나, 여러 개별 파일을 직접 선택/드래그하여
+          <br className="hidden sm:inline" /> 내 업무 폴더 키워드 규칙에 따라 안전하게 자동 분류할 수 있습니다.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
           <button
             onClick={onSelectDirectory}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition active:scale-95 cursor-pointer"
           >
             <FolderPlus className="h-4 w-4" />
-            내 컴퓨터에서 폴더 선택하기
+            내 컴퓨터에서 폴더 선택
+          </button>
+          <button
+            onClick={onSelectFiles}
+            className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:border-slate-400 transition active:scale-95 cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          >
+            <FileUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            개별 파일 여러 개 업로드
           </button>
           <button
             onClick={onLoadDemo}
             className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-100 transition active:scale-95 cursor-pointer dark:border-indigo-800/70 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
           >
             <Sparkles className="h-4 w-4" />
-            샘플 파일 18개로 먼저 체험하기
+            샘플 데모 체험
           </button>
         </div>
 
@@ -154,7 +199,22 @@ export const FileBoard: React.FC<FileBoardProps> = ({
   };
 
   return (
-    <div className="flex h-full flex-col gap-3.5">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`relative flex h-full flex-col gap-3.5 transition-all ${
+        isDragOver ? 'ring-2 ring-blue-500 ring-offset-2 rounded-xl dark:ring-offset-slate-950' : ''
+      }`}
+    >
+      {/* 드래그 오버레이 피드백 */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-blue-500/10 backdrop-blur-xs border-2 border-dashed border-blue-500 text-blue-700 dark:text-blue-300 font-bold text-sm pointer-events-none">
+          <FileUp className="h-6 w-6 mr-2 animate-bounce" />
+          파일을 여기에 놓으면 즉시 목록에 추가됩니다!
+        </div>
+      )}
+
       {/* 상단 분류 요약 대시보드 바 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <div className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
@@ -269,6 +329,15 @@ export const FileBoard: React.FC<FileBoardProps> = ({
               미분류 ({uncategorizedCount})
             </button>
           </div>
+
+          <button
+            onClick={onSelectFiles}
+            className="flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50/80 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100 cursor-pointer dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+            title="개별 파일을 추가로 업로드합니다"
+          >
+            <FileUp className="h-3.5 w-3.5" />
+            <span>파일 추가</span>
+          </button>
 
           <button
             onClick={handleToggleAllCollapse}

@@ -80,6 +80,35 @@ async function getUniqueFileName(destDirHandle: any, originalName: string): Prom
   }
 }
 
+export function createFileItemsFromFiles(
+  rawFiles: File[] | FileList,
+  categories: Category[]
+): FileItem[] {
+  const items: FileItem[] = [];
+  const fileArray = Array.from(rawFiles);
+
+  for (const file of fileArray) {
+    const ext = file.name.includes('.') ? `.${file.name.split('.').pop()!.toLowerCase()}` : '';
+    const match = classifyFile({ name: file.name, extension: ext }, categories);
+
+    items.push({
+      id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: file.name,
+      extension: ext,
+      size: file.size,
+      lastModified: file.lastModified,
+      rawFile: file,
+      assignedCategoryId: match.categoryId,
+      suggestedCategoryId: match.categoryId,
+      matchReason: match.reason,
+      isManual: false,
+      status: 'pending',
+    });
+  }
+
+  return items;
+}
+
 export async function executeFileOrganization(
   rootDirHandle: FileSystemDirectoryHandle | null,
   files: FileItem[],
@@ -113,8 +142,8 @@ export async function executeFileOrganization(
     }
 
     try {
-      // 데모 모드인 경우 시뮬레이션 딜레이 처리
-      if (!rootDirHandle || !item.handle) {
+      // 대상 폴더 핸들이 없거나 가상 데모 파일인 경우 시뮬레이션
+      if (!rootDirHandle || (!item.handle && !item.rawFile)) {
         await new Promise(resolve => setTimeout(resolve, 90));
         successCount++;
         movedFileIds.push(item.id);
@@ -134,16 +163,27 @@ export async function executeFileOrganization(
       // 2. 파일명 충돌 방지 고유 이름 생성
       const finalName = await getUniqueFileName(destDirHandle, item.name);
 
-      // 3. 파일 이동 실행 (Chromium 86+ move() 지원)
-      if (typeof (item.handle as any).move === 'function') {
+      // 3. 파일 이동/저장 실행
+      if (item.handle && typeof (item.handle as any).move === 'function') {
         await (item.handle as any).move(destDirHandle, finalName);
       } else {
-        const srcFile = await item.handle.getFile();
+        const srcBuffer = item.rawFile
+          ? await item.rawFile.arrayBuffer()
+          : await (await item.handle!.getFile()).arrayBuffer();
+
         const newFileHandle = await destDirHandle.getFileHandle(finalName, { create: true });
         const writable = await newFileHandle.createWritable();
-        await writable.write(await srcFile.arrayBuffer());
+        await writable.write(srcBuffer);
         await writable.close();
-        await (rootDirHandle as any).removeEntry(item.name);
+
+        // 원본 폴더에서 읽은 실제 핸들 파일인 경우 기존 위치에서 삭제
+        if (item.handle) {
+          try {
+            await (rootDirHandle as any).removeEntry(item.name);
+          } catch (e) {
+            console.warn('Could not remove original entry:', item.name, e);
+          }
+        }
       }
 
       successCount++;

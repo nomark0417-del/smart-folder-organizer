@@ -1,17 +1,24 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { HeaderBar } from './components/HeaderBar';
 import { CategoryManager } from './components/CategoryManager';
 import { FileBoard } from './components/FileBoard';
 import { ExecutionModal } from './components/ExecutionModal';
 import { useCategories } from './hooks/useCategories';
 import type { FileItem, Category } from './types';
-import { selectAndScanDirectory, executeFileOrganization, isFileSystemAccessSupported } from './utils/fileSystem';
+import {
+  selectAndScanDirectory,
+  executeFileOrganization,
+  isFileSystemAccessSupported,
+  createFileItemsFromFiles,
+} from './utils/fileSystem';
 import { classifyFile, discoverSmartClusters } from './utils/classifier';
 import { generateDemoFiles } from './utils/demoData';
 import { AlertTriangle, Folder, LayoutGrid } from 'lucide-react';
 
 export function App() {
   const { categories, addCategory, updateCategory, deleteCategory, resetToDefaults } = useCategories();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [dirName, setDirName] = useState<string | null>(null);
@@ -115,6 +122,45 @@ export function App() {
     }
   };
 
+  // 개별 파일 추가 공통 로직
+  const addRawFiles = (newRawFiles: File[] | FileList) => {
+    if (!newRawFiles || newRawFiles.length === 0) return;
+    const newItems = createFileItemsFromFiles(newRawFiles, categories);
+
+    setFiles(prev => {
+      // 동일한 이름이 있는 경우 덮어쓰거나 고유하게 추가
+      const existingNames = new Set(prev.map(f => f.name));
+      const filteredNew = newItems.filter(item => !existingNames.has(item.name));
+      return [...prev, ...filteredNew];
+    });
+
+    if (!dirName) {
+      setDirName('직접 추가한 파일 목록');
+      setIsDemoMode(false);
+    }
+    setMobileTab('board');
+  };
+
+  // 개별 파일 선택창 오픈
+  const handleSelectFiles = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  // input change 이벤트
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addRawFiles(e.target.files);
+    }
+  };
+
+  // 드래그 앤 드롭 파일 수신
+  const handleDropFiles = (droppedFiles: FileList) => {
+    addRawFiles(droppedFiles);
+  };
+
   // 데모 파일 로드
   const handleLoadDemo = () => {
     const demoFiles = generateDemoFiles(categories);
@@ -190,6 +236,26 @@ export function App() {
   const handleConfirmExecute = async () => {
     if (files.length === 0) return;
 
+    let targetDirHandle = dirHandle;
+
+    // 만약 개별 파일만 업로드해서 대상 폴더 핸들이 없는 상태라면, 저장할 폴더를 선택받음
+    const hasRealFiles = files.some(f => f.rawFile || f.handle);
+    if (!isDemoMode && !targetDirHandle && hasRealFiles && isSupported) {
+      try {
+        alert('분류된 파일들을 저장할 내 컴퓨터의 대상 폴더를 선택해 주세요.');
+        targetDirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+        setDirHandle(targetDirHandle);
+        setDirName(targetDirHandle.name);
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          // 사용자가 취소함
+          return;
+        }
+        alert('대상 폴더를 열지 못했습니다: ' + (err?.message || '알 수 없음'));
+        return;
+      }
+    }
+
     setIsConfirmStep(false);
     setIsExecuting(true);
     setProgress({ current: 0, total: files.length, currentFileName: '' });
@@ -197,7 +263,7 @@ export function App() {
 
     try {
       const result = await executeFileOrganization(
-        dirHandle,
+        targetDirHandle,
         files,
         categories,
         (current, total, fileName) => {
@@ -231,6 +297,15 @@ export function App() {
         </div>
       )}
 
+      {/* 숨겨진 개별 파일 선택 Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileInputChange}
+        multiple
+        className="hidden"
+      />
+
       {/* 상단 헤더 바 */}
       <HeaderBar
         dirName={dirName}
@@ -240,6 +315,7 @@ export function App() {
         categorizedCount={stats.categorizedCount}
         isScanning={isScanning}
         onSelectDirectory={handleSelectDirectory}
+        onSelectFiles={handleSelectFiles}
         onLoadDemo={handleLoadDemo}
         onReclassifyAll={handleReclassifyAll}
         onExecute={handleOpenExecuteConfirm}
@@ -305,7 +381,9 @@ export function App() {
             onReassignFile={handleReassignFile}
             onApplyCluster={handleApplyCluster}
             onSelectDirectory={handleSelectDirectory}
+            onSelectFiles={handleSelectFiles}
             onLoadDemo={handleLoadDemo}
+            onDropFiles={handleDropFiles}
           />
         </section>
       </main>

@@ -1,4 +1,4 @@
-import { FolderOpen, Play, AlertTriangle, ShieldCheck, Sparkles, RefreshCw } from 'lucide-react';
+import { FolderOpen, Play, AlertTriangle, ShieldCheck, Sparkles, RefreshCw, FileUp } from 'lucide-react';
 import { formatBytes } from '../utils/format';
 
 interface HeaderBarProps {
@@ -9,6 +9,7 @@ interface HeaderBarProps {
   categorizedCount: number;
   isScanning: boolean;
   onSelectDirectory: () => void;
+  onSelectFiles: () => void;
   onLoadDemo: () => void;
   onReclassifyAll: () => void;
   onExecute: () => void;
@@ -23,6 +24,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   categorizedCount,
   isScanning,
   onSelectDirectory,
+  onSelectFiles,
   onLoadDemo,
   onReclassifyAll,
   onExecute,
@@ -98,12 +100,22 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           )}
 
           <button
+            onClick={onSelectFiles}
+            disabled={isScanning}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 shadow-2xs transition active:scale-95 disabled:opacity-50 cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            title="여러 개별 파일을 직접 선택하여 목록에 추가합니다"
+          >
+            <FileUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <span>파일 추가</span>
+          </button>
+
+          <button
             onClick={onSelectDirectory}
             disabled={isScanning}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 shadow-2xs transition active:scale-95 disabled:opacity-50 cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             <FolderOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            {dirName ? '다른 폴더 열기' : '폴더 선택하기'}
+            {dirName ? '폴더 변경' : '폴더 선택'}
           </button>
 
           <button

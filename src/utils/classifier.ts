@@ -7,55 +7,57 @@ export interface ClassificationResult {
   confidence: 'high' | 'medium' | 'low';
 }
 
-// 1. 사용자 카테고리와 파일명/확장자 매칭
-export function classifyFile(file: { name: string; extension: string }, categories: Category[]): ClassificationResult {
+// 1. 오직 사용자 카테고리의 '키워드'를 기준으로 파일 분류 (확장자는 제외)
+export function classifyFile(file: { name: string; extension?: string }, categories: Category[]): ClassificationResult {
   const lowerName = file.name.toLowerCase();
-  const lowerExt = file.extension.toLowerCase();
 
-  let bestMatch: { category: Category; score: number; reason: string } | null = null;
+  let bestMatch: { category: Category; score: number; matchedKeywords: string[] } | null = null;
 
   for (const cat of categories) {
-    let score = 0;
-    const reasons: string[] = [];
+    if (!cat.keywords || cat.keywords.length === 0) continue;
 
-    // 키워드 검사 (가장 높은 가중치)
-    for (const kw of cat.keywords) {
-      if (lowerName.includes(kw.toLowerCase())) {
-        score += 10;
-        reasons.push(`키워드 '${kw}' 일치`);
-        break; // 첫 매칭 키워드만 카운트
+    const matched: string[] = [];
+    let score = 0;
+
+    for (const rawKw of cat.keywords) {
+      const kw = rawKw.trim().toLowerCase();
+      if (!kw) continue;
+
+      if (lowerName.includes(kw)) {
+        matched.push(rawKw.trim());
+        // 키워드가 길수록 더 구체적인 키워드로 간주하여 높은 점수 부여
+        score += 10 + kw.length;
       }
     }
 
-    // 확장자 검사
-    if (cat.extensions.includes(lowerExt)) {
-      score += 5;
-      reasons.push(`확장자 '${lowerExt}' 일치`);
-    }
-
-    if (score > 0 && (!bestMatch || score > bestMatch.score)) {
-      bestMatch = {
-        category: cat,
-        score,
-        reason: reasons.join(' + '),
-      };
+    if (matched.length > 0) {
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = {
+          category: cat,
+          score,
+          matchedKeywords: matched,
+        };
+      }
     }
   }
 
+  // 일치하는 키워드가 하나라도 있는 경우 해당 카테고리로 배정
   if (bestMatch) {
+    const kwText = bestMatch.matchedKeywords.slice(0, 3).map(k => `'${k}'`).join(', ');
+    const moreText = bestMatch.matchedKeywords.length > 3 ? ` 외 ${bestMatch.matchedKeywords.length - 3}개` : '';
     return {
       categoryId: bestMatch.category.id,
       categoryName: bestMatch.category.name,
-      reason: bestMatch.reason,
-      confidence: bestMatch.score >= 10 ? 'high' : 'medium',
+      reason: `키워드 ${kwText}${moreText} 일치`,
+      confidence: 'high',
     };
   }
 
-  // 매칭되는 카테고리가 없는 경우: 기본 기타 분류
+  // 키워드가 없는 파일은 무조건 '기타_미분류'로 남김
   return {
     categoryId: 'uncategorized',
     categoryName: '기타_미분류',
-    reason: '일치하는 규칙 없음',
+    reason: '일치하는 키워드 없음',
     confidence: 'low',
   };
 }

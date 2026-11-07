@@ -32,20 +32,17 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newKeywords, setNewKeywords] = useState('');
-  const [newExtensions, setNewExtensions] = useState('');
   const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editKeywords, setEditKeywords] = useState('');
-  const [editExtensions, setEditExtensions] = useState('');
   const [editColor, setEditColor] = useState(PRESET_COLORS[0]);
 
   const handleStartEdit = (cat: Category) => {
     setEditingId(cat.id);
     setEditName(cat.name);
     setEditKeywords(cat.keywords.join(', '));
-    setEditExtensions(cat.extensions.join(', '));
     setEditColor(cat.color || PRESET_COLORS[0]);
   };
 
@@ -54,7 +51,6 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     onUpdateCategory(id, {
       name: editName.trim(),
       keywords: editKeywords.split(',').map(s => s.trim()).filter(Boolean),
-      extensions: editExtensions.split(',').map(s => s.trim()).filter(Boolean),
       color: editColor,
     });
     setEditingId(null);
@@ -66,12 +62,11 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     onAddCategory(
       newName.trim(),
       newKeywords.split(',').map(s => s.trim()).filter(Boolean),
-      newExtensions.split(',').map(s => s.trim()).filter(Boolean),
+      [],
       newColor
     );
     setNewName('');
     setNewKeywords('');
-    setNewExtensions('');
     setNewColor(PRESET_COLORS[(categories.length + 1) % PRESET_COLORS.length]);
     setIsAdding(false);
   };
@@ -86,7 +81,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
             내 업무 폴더 규칙 ({categories.length})
           </h2>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            폴더와 매칭 키워드를 추가·수정하면 즉시 분류에 반영됩니다
+            폴더명과 매칭 키워드를 추가·수정하면 즉시 분류에 반영됩니다
           </p>
         </div>
         <button
@@ -117,25 +112,13 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
             </div>
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                매칭 키워드 <span className="font-normal text-slate-400">(쉼표 구분)</span>
+                매칭 키워드 <span className="text-red-500">*</span> <span className="font-normal text-slate-400">(쉼표 구분, 파일명에 포함 시 분류)</span>
               </label>
               <input
                 type="text"
                 placeholder="예: 인사, 평가, 면접, 이력서"
                 value={newKeywords}
                 onChange={e => setNewKeywords(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                매칭 확장자 <span className="font-normal text-slate-400">(쉼표 구분)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="예: .docx, .pdf, .xlsx"
-                value={newExtensions}
-                onChange={e => setNewExtensions(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
             </div>
@@ -198,15 +181,6 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                     type="text"
                     value={editKeywords}
                     onChange={e => setEditKeywords(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">확장자 (쉼표 구분)</label>
-                  <input
-                    type="text"
-                    value={editExtensions}
-                    onChange={e => setEditExtensions(e.target.value)}
                     className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900"
                   />
                 </div>
@@ -287,10 +261,10 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                 </div>
               </div>
 
-              {/* 키워드 & 확장자 태그 프리뷰 */}
-              {(cat.keywords.length > 0 || cat.extensions.length > 0) && (
+              {/* 키워드 태그 프리뷰 */}
+              {cat.keywords.length > 0 && (
                 <div className="flex flex-wrap gap-1 pl-4">
-                  {cat.keywords.slice(0, 4).map((kw, i) => (
+                  {cat.keywords.slice(0, 5).map((kw, i) => (
                     <span
                       key={i}
                       className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600 dark:bg-slate-800 dark:text-slate-400"
@@ -298,19 +272,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                       #{kw}
                     </span>
                   ))}
-                  {cat.keywords.length > 4 && (
-                    <span className="text-[10px] text-slate-400 self-center">+{cat.keywords.length - 4}</span>
-                  )}
-                  {cat.extensions.slice(0, 3).map((ext, i) => (
-                    <span
-                      key={`ext-${i}`}
-                      className="rounded bg-blue-50/80 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-950/50 dark:text-blue-400"
-                    >
-                      {ext}
-                    </span>
-                  ))}
-                  {cat.extensions.length > 3 && (
-                    <span className="text-[10px] text-blue-400 self-center">+{cat.extensions.length - 3}</span>
+                  {cat.keywords.length > 5 && (
+                    <span className="text-[10px] text-slate-400 self-center">+{cat.keywords.length - 5}</span>
                   )}
                 </div>
               )}
