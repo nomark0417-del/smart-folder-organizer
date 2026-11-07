@@ -2,25 +2,39 @@ import type { Category, FileItem } from '../types';
 import { classifyFile } from './classifier';
 
 const RAW_DEMO_FILES = [
-  { name: '2026_상반기_신사업_전략기획서_v2.pptx', size: 4820100, daysAgo: 1 },
-  { name: '주간업무보고_기획팀_최종.docx', size: 842000, daysAgo: 2 },
-  { name: '서비스_운영매뉴얼_검토본.hwp', size: 1250400, daysAgo: 4 },
-  { name: '법인카드_영수증_11월정산.pdf', size: 612000, daysAgo: 1 },
-  { name: '2026_원천징수영수증_세무사제출용.pdf', size: 450200, daysAgo: 5 },
-  { name: '거래처_솔루션도입_견적서_2026.xlsx', size: 328000, daysAgo: 3 },
-  { name: '메인페이지_리뉴얼_시안_v3.fig', size: 15400000, daysAgo: 2 },
-  { name: '모바일앱_프로모션_배너_최종.png', size: 2150000, daysAgo: 1 },
-  { name: '브랜드_공식로고_가이드.svg', size: 380000, daysAgo: 10 },
-  { name: '고객DB_마이그레이션_스키마_backup.sql', size: 8920000, daysAgo: 6 },
-  { name: 'payment_gateway_api_spec.json', size: 42100, daysAgo: 3 },
-  { name: 'ChromeSetup.exe', size: 1420000, daysAgo: 14 },
-  { name: 'ZoomInstallerFull.msi', size: 38400000, daysAgo: 20 },
-  // 아래 파일들은 기본 키워드에는 없지만 AI 스마트 연관성(공통 단어 '알파프로젝트', 공통 연월 '2026-10')으로 감지될 파일들
-  { name: '알파프로젝트_킥오프_녹취록.m4a', size: 3128000, daysAgo: 7 },
-  { name: '알파프로젝트_산출물_패키지.7z', size: 12540000, daysAgo: 7 },
-  { name: '알파프로젝트_현장브리핑_영상.mp4', size: 28890000, daysAgo: 6 },
-  { name: '2026-10-15_외부미팅_보이스메모.mp3', size: 12400000, daysAgo: 22 },
-  { name: '2026-10-21_세미나_녹화본.mkv', size: 45200000, daysAgo: 16 },
+  // 1. 수능
+  { name: '2027학년도_수능_원서접수_시행세부계획.pdf', size: 1420100, daysAgo: 1 },
+  { name: '9월_전국연합학력평가_성적통지표_배부명단.xlsx', size: 452000, daysAgo: 2 },
+  { name: '대학수학능력시험_시험장배치_및_감독관편성표.docx', size: 820400, daysAgo: 4 },
+
+  // 2. 기숙사
+  { name: '2026학년도_1학기_기숙사_사생_입사신청서.xlsx', size: 612000, daysAgo: 1 },
+  { name: '기숙사_호실배정_및_점호_운영일지.hwp', size: 950200, daysAgo: 3 },
+  { name: '사생수칙_위반자_상벌점_관리대장.xlsx', size: 328000, daysAgo: 5 },
+  { name: '주말_외박_외출_사전신청_승인목록.pdf', size: 280000, daysAgo: 2 },
+
+  // 3. EBS
+  { name: '2027_EBS_수능특강_국어영역_연계문항분석.pdf', size: 5400000, daysAgo: 2 },
+  { name: 'EBS_수능완성_수학영역_해설지_보충자료.pdf', size: 8150000, daysAgo: 6 },
+  { name: '방과후수업_EBS교재_주문수량_취합본.xlsx', size: 380000, daysAgo: 8 },
+
+  // 4. 예산
+  { name: '2026학년도_학교회계_본예산_편성안.xlsx', size: 2920000, daysAgo: 3 },
+  { name: '11월_교무실환경개선_물품구매_지출품의서.pdf', size: 421000, daysAgo: 1 },
+  { name: '1차_추경예산안_세출예산_사업별명세서.hwp', size: 1840000, daysAgo: 7 },
+  { name: '교직원_출장여비_지출정산서_영수증.pdf', size: 680000, daysAgo: 2 },
+
+  // 5. 서무
+  { name: '2026_하반기_보안점검_및_비밀관리기록부.hwp', size: 1250000, daysAgo: 4 },
+  { name: '교직원_복무관리_연가_출장_기안문.docx', size: 512000, daysAgo: 2 },
+  { name: '교육지원청_발송_대외공문_시행문.pdf', size: 730000, daysAgo: 1 },
+  { name: '행정실_공용차량_배차신청서_및_운행일지.xlsx', size: 340000, daysAgo: 5 },
+
+  // 6. AI 스마트 연관성 감지용 (공통 키워드 '학부모회', 공통 연월 '2026-10')
+  { name: '학부모회_총회_진행순서_안내.hwp', size: 680000, daysAgo: 10 },
+  { name: '학부모회_임원진_명단_연락처.xlsx', size: 290000, daysAgo: 10 },
+  { name: '2026-10-15_학교운영위원회_회의녹취.m4a', size: 12400000, daysAgo: 22 },
+  { name: '2026-10-21_개교기념_기념식_녹화본.mp4', size: 45200000, daysAgo: 16 },
 ];
 
 export function generateDemoFiles(categories: Category[]): FileItem[] {
